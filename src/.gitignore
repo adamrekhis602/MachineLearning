@@ -1,0 +1,21 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Data files (optional if large)
+data/raw/
+data/processed/
+data/train_test/
+
+# Models
+models/
+
+# Reports (optional)
+reports/
+
+# OS
+.DS_Store
+Thumbs.db

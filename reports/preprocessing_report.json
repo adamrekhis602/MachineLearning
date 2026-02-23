@@ -1,0 +1,21 @@
+{
+  "rows_before": 4372,
+  "cols_before": 52,
+  "rows_after": 4372,
+  "cols_after": 58,
+  "dropped_columns": [
+    "NewsletterSubscribed"
+  ],
+  "parsed_date_column": "RegistrationDate",
+  "missing_before": {
+    "AvgDaysBetweenPurchases": 79,
+    "Age": 1311
+  },
+  "missing_after": {},
+  "outliers_fixed": {},
+  "engineered_features": [
+    "MonetaryPerDay",
+    "AvgBasketValue",
+    "IsPrivateIP"
+  ]
+}
