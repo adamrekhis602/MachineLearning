@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analyse Comportementale Clientèle — ML Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0e4a8e 100%);
+      padding: 24px 40px;
+      display: flex; align-items: center; gap: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    header .logo { font-size: 2rem; }
+    header h1 { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    header p { font-size: 0.85rem; color: #93c5fd; margin-top: 2px; }
+
+    /* ── Layout ── */
+    main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding: 30px 40px;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 20px; } }
+
+    /* ── Cards ── */
+    .card {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+    .card-title {
+      font-size: 1rem; font-weight: 600;
+      color: #60a5fa; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── Form ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .form-group label {
+      display: block; font-size: 0.75rem;
+      color: #94a3b8; margin-bottom: 4px;
+    }
+    .form-group input[type="number"] {
+      width: 100%; padding: 9px 12px;
+      background: #0f172a; border: 1px solid #334155;
+      border-radius: 8px; color: #e2e8f0; font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      outline: none; border-color: #60a5fa;
+    }
+
+    /* ── Slider styling ── */
+    input[type="range"] {
+      width: 100%; height: 4px; cursor: pointer;
+      accent-color: #3b82f6; background: #334155;
+      border-radius: 2px;
+    }
+
+    /* ── Button ── */
+    .btn-predict {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff; border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      margin-top: 18px; transition: transform 0.15s, box-shadow 0.15s;
+      letter-spacing: 0.5px;
+    }
+    .btn-predict:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37,99,235,0.5);
+    }
+    .btn-predict:active { transform: translateY(0); }
+
+    /* ── Results ── */
+    #results { display: none; }
+    .result-block {
+      background: #0f172a; border-radius: 10px;
+      padding: 18px; margin-bottom: 14px;
+    }
+    .result-block h3 {
+      font-size: 0.85rem; color: #64748b;
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+    }
+
+    /* Churn badge */
+    .churn-badge {
+      font-size: 1.2rem; font-weight: 700;
+      padding: 10px 18px; border-radius: 8px;
+      display: inline-block; margin-bottom: 10px;
+    }
+    .churn-low    { background: #064e3b; color: #6ee7b7; }
+    .churn-high   { background: #7f1d1d; color: #fca5a5; }
+
+    /* Progress bar for probability */
+    .prob-bar { margin-top: 10px; }
+    .prob-bar-track {
+      background: #334155; border-radius: 6px; height: 10px; overflow: hidden;
+    }
+    .prob-bar-fill {
+      height: 100%; border-radius: 6px;
+      transition: width 0.8s ease;
+      background: linear-gradient(90deg, #16a34a, #facc15, #dc2626);
+    }
+    .prob-label {
+      font-size: 0.8rem; color: #94a3b8; margin-top: 4px;
+      display: flex; justify-content: space-between;
+    }
+
+    /* Cluster */
+    .cluster-pill {
+      display: inline-block; padding: 8px 20px;
+      border-radius: 20px; font-weight: 600; font-size: 1rem;
+      background: linear-gradient(135deg, #1e40af, #2563eb);
+      color: #bfdbfe;
+    }
+
+    /* Monetary */
+    .monetary-value {
+      font-size: 2rem; font-weight: 700; color: #34d399;
+      margin: 6px 0;
+    }
+
+    /* Risk level */
+    .risk-badge {
+      padding: 4px 12px; border-radius: 12px;
+      font-size: 0.8rem; font-weight: 600; display: inline-block;
+    }
+    .risk-Critique { background: #7f1d1d; color: #fca5a5; }
+    .risk-Élevé    { background: #78350f; color: #fcd34d; }
+    .risk-Modéré   { background: #164e63; color: #67e8f9; }
+    .risk-Faible   { background: #064e3b; color: #6ee7b7; }
+
+    /* Loading spinner */
+    .spinner {
+      display: none; text-align: center; padding: 30px 0;
+    }
+    .spinner::after {
+      content: "";
+      display: inline-block; width: 36px; height: 36px;
+      border: 4px solid #334155; border-top-color: #3b82f6;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .error-msg {
+      background: #450a0a; border: 1px solid #991b1b;
+      color: #fca5a5; padding: 12px 16px; border-radius: 8px;
+      display: none;
+    }
+
+    /* Recommendations */
+    .reco-list { list-style: none; }
+    .reco-list li {
+      padding: 8px 0; border-bottom: 1px solid #1e293b;
+      font-size: 0.88rem; color: #cbd5e1;
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .reco-list li:last-child { border-bottom: none; }
+    .reco-icon { font-size: 1rem; flex-shrink: 0; }
+
+    /* Stats mini */
+    .mini-stat {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid #1e293b;
+      font-size: 0.85rem;
+    }
+    .mini-stat:last-child { border-bottom: none; }
+    .mini-stat-val { color: #60a5fa; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🛍️</div>
+  <div>
+    <h1>Analyse Comportementale Clientèle Retail</h1>
+    <p>Prédiction Churn · Segmentation · Estimation Monétaire — Machine Learning GI2</p>
+  </div>
+</header>
+
+<main>
+  <!-- ── Formulaire ── -->
+  <div>
+    <div class="card">
+      <div class="card-title">📋 Profil Client</div>
+      <form id="predictForm">
+        <div class="form-grid">
+          {% for field in fields %}
+          <div class="form-group">
+            <label for="{{ field.name }}">{{ field.label }}</label>
+            <input
+              type="number"
+              id="{{ field.name }}"
+              name="{{ field.name }}"
+              value="{{ field.default }}"
+              min="{{ field.min }}"
+              max="{{ field.max }}"
+              step="{{ field.step }}"
+              required
+            />
+          </div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn-predict">
+          🔮 Analyser ce client
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Résultats ── -->
+  <div>
+    <!-- État initial -->
+    <div class="card" id="placeholder">
+      <div class="card-title">📊 Résultats</div>
+      <div style="text-align:center; padding: 50px 0; color: #475569;">
+        <div style="font-size:3rem; margin-bottom:12px;">🔮</div>
+        <p>Renseignez le profil d'un client et cliquez sur <strong>Analyser</strong>.</p>
+      </div>
+    </div>
+
+    <!-- Spinner -->
+    <div class="spinner" id="spinner"></div>
+
+    <!-- Erreur -->
+    <div class="error-msg" id="errorMsg"></div>
+
+    <!-- Résultats réels -->
+    <div id="results">
+
+      <!-- Churn -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">🎯 Prédiction Churn</div>
+        <div id="churnBadge" class="churn-badge"></div>
+        <div id="riskBadge" class="risk-badge" style="margin-left:8px;"></div>
+        <div class="prob-bar" style="margin-top:14px;">
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">
+            <span>Probabilité de départ</span>
+            <span id="churnProb" style="color:#e2e8f0; font-weight:600;"></span>
+          </div>
+          <div class="prob-bar-track">
+            <div class="prob-bar-fill" id="probFill" style="width:0%"></div>
+          </div>
+          <div class="prob-label"><span>0%</span><span>50%</span><span>100%</span></div>
+        </div>
+      </div>
+
+      <!-- Cluster + Monetary -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px;">
+        <div class="card">
+          <div class="card-title">🗂️ Segment Client</div>
+          <div style="text-align:center; padding:8px 0;">
+            <div class="cluster-pill" id="clusterLabel"></div>
+            <div style="font-size:0.78rem; color:#64748b; margin-top:8px;" id="clusterNum"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">💰 Valeur Estimée</div>
+          <div class="monetary-value" id="monetaryVal">—</div>
+          <div style="font-size:0.78rem; color:#64748b;">Revenu prédit (£)</div>
+        </div>
+      </div>
+
+      <!-- Résumé inputs -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">📋 Résumé du profil</div>
+        <div id="inputSummary"></div>
+      </div>
+
+      <!-- Recommandations -->
+      <div class="card">
+        <div class="card-title">💡 Recommandations Marketing</div>
+        <ul class="reco-list" id="recoList"></ul>
+      </div>
+
+    </div><!-- #results -->
+  </div><!-- right col -->
+</main>
+
+<script>
+  const form = document.getElementById("predictForm");
+  const spinner = document.getElementById("spinner");
+  const placeholder = document.getElementById("placeholder");
+  const results = document.getElementById("results");
+  const errorMsg = document.getElementById("errorMsg");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    placeholder.style.display = "none";
+    results.style.display = "none";
+    errorMsg.style.display = "none";
+    spinner.style.display = "block";
+
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch("/predict", { method: "POST", body: formData });
+      const data = await response.json();
+      spinner.style.display = "none";
+
+      if (!data.success) {
+        errorMsg.textContent = "Erreur : " + data.error;
+        errorMsg.style.display = "block";
+        return;
+      }
+
+      // ── Churn
+      const prob = data.churn_probability ?? 0;
+      document.getElementById("churnProb").textContent = prob.toFixed(1) + "%";
+      document.getElementById("probFill").style.width = prob + "%";
+      const churnBadge = document.getElementById("churnBadge");
+      churnBadge.textContent = data.churn_label ?? "—";
+      churnBadge.className = "churn-badge " + (data.churn_prediction ? "churn-high" : "churn-low");
+
+      const risk = data.risk_level ?? "Faible";
+      const riskEl = document.getElementById("riskBadge");
+      riskEl.textContent = "Risque " + risk;
+      riskEl.className = "risk-badge risk-" + risk;
+
+      // ── Cluster
+      document.getElementById("clusterLabel").textContent = data.cluster_label ?? "—";
+      document.getElementById("clusterNum").textContent =
+        data.cluster !== undefined ? `(Cluster ${data.cluster})` : "";
+
+      // ── Monetary
+      const monEl = document.getElementById("monetaryVal");
+      monEl.textContent = data.predicted_monetary != null
+        ? "£ " + data.predicted_monetary.toLocaleString("fr-FR", {minimumFractionDigits: 2, maximumFractionDigits: 2})
+        : "N/A";
+
+      // ── Input summary (quelques clés)
+      const summaryKeys = ["Recency","Frequency","MonetaryTotal","Age","SatisfactionScore","ReturnRatio"];
+      const labels = {
+        Recency: "Récence (j)", Frequency: "Fréquence",
+        MonetaryTotal: "Total dépensé (£)", Age: "Âge",
+        SatisfactionScore: "Satisfaction", ReturnRatio: "Taux retour"
+      };
+      let summaryHtml = "";
+      for (const k of summaryKeys) {
+        if (data.inputs && data.inputs[k] !== undefined) {
+          summaryHtml += `<div class="mini-stat">
+            <span>${labels[k] || k}</span>
+            <span class="mini-stat-val">${data.inputs[k]}</span>
+          </div>`;
+        }
+      }
+      document.getElementById("inputSummary").innerHTML = summaryHtml;
+
+      // ── Recommandations
+      const recos = getRecommendations(data);
+      document.getElementById("recoList").innerHTML = recos
+        .map(r => `<li><span class="reco-icon">${r.icon}</span><span>${r.text}</span></li>`)
+        .join("");
+
+      results.style.display = "block";
+
+    } catch (err) {
+      spinner.style.display = "none";
+      errorMsg.textContent = "Erreur réseau : " + err.message;
+      errorMsg.style.display = "block";
+    }
+  });
+
+  function getRecommendations(data) {
+    const recos = [];
+    const prob = data.churn_probability ?? 0;
+    const cluster = data.cluster_label ?? "";
+    const inp = data.inputs || {};
+
+    if (prob >= 70) {
+      recos.push({ icon: "🚨", text: "PRIORITÉ : Contacter ce client immédiatement avec une offre de rétention personnalisée (remise, cadeau, appel téléphonique)." });
+    } else if (prob >= 50) {
+      recos.push({ icon: "⚠️", text: "Envoyer une campagne email de réengagement avec un bon de réduction dans les 7 prochains jours." });
+    } else {
+      recos.push({ icon: "✅", text: "Client à faible risque. Maintenir l'engagement avec la newsletter et les offres saisonnières." });
+    }
+
+    if (inp.SatisfactionScore < 3) {
+      recos.push({ icon: "😟", text: "Score de satisfaction faible — déclencher une enquête de satisfaction et traiter les points de friction identifiés." });
+    }
+    if (inp.ReturnRatio > 0.2) {
+      recos.push({ icon: "📦", text: "Taux de retour élevé — vérifier la qualité des produits commandés par ce client et proposer une assistance personnalisée." });
+    }
+    if (inp.Recency > 180) {
+      recos.push({ icon: "😴", text: "Client inactif depuis plus de 6 mois — campagne de réactivation avec offre 'nous vous avons manqué'." });
+    }
+    if (cluster === "Champions") {
+      recos.push({ icon: "🏆", text: "Client Champion — proposer un programme de fidélité VIP et des accès exclusifs aux nouveautés." });
+    } else if (cluster === "Dormants") {
+      recos.push({ icon: "💤", text: "Segment Dormants — tenter une offre de 'last chance' avant de dépenser des ressources marketing supplémentaires." });
+    }
+    if (inp.Frequency <= 2) {
+      recos.push({ icon: "🔁", text: "Faible fréquence d'achat — proposer un programme d'abonnement ou des rappels personnalisés." });
+    }
+    return recos;
+  }
+</script>
+</body>
+</html>
